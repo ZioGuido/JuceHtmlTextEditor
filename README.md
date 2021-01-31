@@ -1,6 +1,5 @@
 # JuceHtmlTextEditor
 
-```html
 This is an example program for a JUCE component that I wrote that can do some simple HTML 4 parsing of just the basic tags for formatting text and adding hyperlinks.
 Since no component in the JUCE library can mix normal text and hyperlinks, the only way to do so was to mix multiple components and find a way to align them in a way 
 that everything seems fluid like on a normal web page. Quite tricky, isn'it?
@@ -8,6 +7,7 @@ that everything seems fluid like on a normal web page. Quite tricky, isn'it?
 The JUCE component TextEditor can be multiline and supports various font size, faces and colors, like an RTF document (or an HTML page!), but can't parse any markup language.
 So I have added some functions to do the parsing and handlink links.
 
+```html
 Currently, the only tags that are correctly supported are:
 - Bold <b>
 - Italic <i>
@@ -17,7 +17,8 @@ Currently, the only tags that are correctly supported are:
 - Unordered list <ul> and <li>
 - Anchor <a>
 
-Evething else between < and > will fail the parsing and will not be rendered as text, so also using comments between <!-- and --> will work.
+Evething else between < and > will fail the parsing and will not be rendered as text, 
+so also using comments between <!-- and --> will work.
 
 Remember to use the quote marks for the value of a property. For example:
 <a href="https://www.github.com">This will work</a>
