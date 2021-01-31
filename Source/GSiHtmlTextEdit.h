@@ -60,7 +60,7 @@ public:
             fontSize = prev_fontSize = 18.f;
             fontColor = prev_fontColor = Colours::white;
             fontStyle = Font::FontStyleFlags::plain;
-            textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+            doSetFont();
             textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
             textEditor->setColour(TextEditor::ColourIds::backgroundColourId, Colours::black);
         }
@@ -71,7 +71,7 @@ public:
     void setNormalFontSize(float size)
     {
         fontSize = prev_fontSize = size;
-        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+        doSetFont();
     }
 
     void setNormalFontColor(const Colour& col)
@@ -83,7 +83,7 @@ public:
     void setNormalFontFace(const String& face)
     {
         fontFace = prev_fontFace = face;
-        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+        doSetFont();
     }
 
     void setBackgroundColor(const Colour& col)
@@ -120,6 +120,7 @@ public:
                 // Add the text already rendered
                 textEditor->setCaretPosition(charCounter); 
                 textEditor->insertTextAtCaret(output);
+                output.clear();
 
                 beginTag = true;
                 canParse = false;
@@ -130,9 +131,6 @@ public:
             {
                 if (s == '>')
                 {
-                    // Clear the output buffer
-                    output.clear();
-
                     beginTag = false;
                     canParse = true;
                 }
@@ -151,18 +149,18 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Italic
-                else if (tag ==  "i") { fontStyle |= Font::FontStyleFlags::italic;      textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
-                else if (tag == "/i") { fontStyle ^= Font::FontStyleFlags::italic;      textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
+                else if (tag ==  "i") { fontStyle |= Font::FontStyleFlags::italic;      doSetFont(); }
+                else if (tag == "/i") { fontStyle ^= Font::FontStyleFlags::italic;      doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Bold
-                else if (tag ==  "b") { fontStyle |= Font::FontStyleFlags::bold;        textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
-                else if (tag == "/b") { fontStyle ^= Font::FontStyleFlags::bold;        textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
+                else if (tag ==  "b") { fontStyle |= Font::FontStyleFlags::bold;        doSetFont(); }
+                else if (tag == "/b") { fontStyle ^= Font::FontStyleFlags::bold;        doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Underlined
-                else if (tag ==  "u") { fontStyle |= Font::FontStyleFlags::underlined;  textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
-                else if (tag == "/u") { fontStyle ^= Font::FontStyleFlags::underlined;  textEditor->setFont(Font(fontFace, fontSize, fontStyle)); }
+                else if (tag ==  "u") { fontStyle |= Font::FontStyleFlags::underlined;  doSetFont(); }
+                else if (tag == "/u") { fontStyle ^= Font::FontStyleFlags::underlined;  doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Anchor
@@ -170,7 +168,7 @@ public:
                 {
                     prev_fontColor = fontColor;
                     fontStyle = Font::FontStyleFlags::underlined;
-                    textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                    doSetFont();
                     textEditor->setColour(TextEditor::ColourIds::textColourId, linkColor);
 
                     if (tag.containsIgnoreCase("href"))
@@ -182,7 +180,7 @@ public:
                 else if (tag == "/a") 
                 { 
                     fontStyle ^= Font::FontStyleFlags::underlined;  
-                    textEditor->setFont(Font(fontFace, fontSize, fontStyle)); 
+                    doSetFont(); 
                     textEditor->setColour(TextEditor::ColourIds::textColourId, prev_fontColor);
 
                     tmpHL.position.setEnd(charCounter);
@@ -199,7 +197,7 @@ public:
                         int i1 = tag.indexOf("size=") + 5; int i2 = tag.indexOfChar(i1 + 1, '"');
                         auto val = tag.substring(i1, i2).replace("\"", "");
                         fontSize = val.getFloatValue();
-                        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                        doSetFont();
                     }
 
                     if (tag.containsIgnoreCase("color"))
@@ -217,14 +215,14 @@ public:
                         prev_fontFace = fontFace;
                         int i1 = tag.indexOf("face=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
                         fontFace = tag.substring(i1, i2).replace("\"", "");
-                        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                        doSetFont();
                     }
                 }
                 else if (tag == "/font")
                 {
                     fontFace = prev_fontFace;
                     fontSize = prev_fontSize;
-                    textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                    doSetFont();
 
                     fontColor = prev_fontColor;
                     textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
@@ -239,6 +237,12 @@ public:
                     charCounter += indent.length();
                 }
 
+                else if (tag.startsWithIgnoreCase("/ul"))
+                {
+                    // Add newline after unordered list
+                    textEditor->insertTextAtCaret("\n"); charCounter++;
+                }
+
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Headers
                 else if (tag.startsWithIgnoreCase("h") && tag.containsAnyOf("1234"))
@@ -246,19 +250,19 @@ public:
                     prev_fontSize = fontSize;
                     auto sz = tag.getLastCharacters(1).getIntValue();
                     fontSize = 40 - sz * 4;
-                    textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                    doSetFont();
 
                     // Add newline before header text
-                    textEditor->insertTextAtCaret("\n"); charCounter += 1;
+                    textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
 
                 else if (tag.startsWithIgnoreCase("/h") && tag.containsAnyOf("1234"))
                 {
                     fontSize = prev_fontSize;
-                    textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+                    doSetFont();
 
                     // Add newline after header text
-                    textEditor->insertTextAtCaret("\n"); charCounter += 1;
+                    textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
                 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -374,6 +378,10 @@ private:
     } tmpHL;
     Array<HyperLink> AllLinks;
 
+    void doSetFont()
+    {
+        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+    }
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GSiHtmlTextEdit)

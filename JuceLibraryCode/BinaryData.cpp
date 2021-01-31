@@ -29,7 +29,7 @@ static const unsigned char temp_binary_data_0[] =
 "<a href=\"https://www.juce.com\">This is an hyperlink to www.juce.com</a>\r\n"
 "<br>\r\n"
 "<br>\r\n"
-"<h3>This is an header</h3>\r\n"
+"<h3>This is a header</h3>\r\n"
 "<br>\r\n"
 "<font face=\"Times New Roman\">This line in Times New Roman introduces an unordered list</font>\r\n"
 "<ul>\r\n"
@@ -76,7 +76,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
 
     switch (hash)
     {
-        case 0x321d22a4:  numBytes = 856; return page1_htm;
+        case 0x321d22a4:  numBytes = 855; return page1_htm;
         case 0x322b3a25:  numBytes = 306; return page2_htm;
         default: break;
     }
