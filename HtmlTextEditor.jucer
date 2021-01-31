@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<JUCERPROJECT id="NRsLgY" name="HtmlTextEditor" projectType="guiapp" useAppConfig="0"
+              addUsingNamespaceToJuceHeader="1" jucerFormatVersion="1">
+  <MAINGROUP id="htzgEz" name="HtmlTextEditor">
+    <GROUP id="{B018CD0B-56CF-6F64-0054-17A86E8FB030}" name="Source">
+      <GROUP id="{A0D6608F-281D-9841-7F7B-9F1280C93DF8}" name="Resources">
+        <FILE id="OJB0am" name="page1.htm" compile="0" resource="1" file="Source/Resources/page1.htm"/>
+        <FILE id="asfcko" name="page2.htm" compile="0" resource="1" file="Source/Resources/page2.htm"/>
+      </GROUP>
+      <FILE id="bU54kX" name="Common_UI.h" compile="0" resource="0" file="Source/Common_UI.h"/>
+      <FILE id="VKy6f8" name="GSiHtmlTextEdit.h" compile="0" resource="0"
+            file="Source/GSiHtmlTextEdit.h"/>
+      <FILE id="RoIfkH" name="HtmlBrowser.h" compile="0" resource="0" file="Source/HtmlBrowser.h"/>
+      <FILE id="koV61T" name="Main.cpp" compile="1" resource="0" file="Source/Main.cpp"/>
+      <FILE id="eOJQSI" name="MainComponent.h" compile="0" resource="0" file="Source/MainComponent.h"/>
+      <FILE id="slBDK7" name="MainComponent.cpp" compile="1" resource="0"
+            file="Source/MainComponent.cpp"/>
+    </GROUP>
+  </MAINGROUP>
+  <JUCEOPTIONS JUCE_STRICT_REFCOUNTEDPOINTER="1"/>
+  <EXPORTFORMATS>
+    <VS2019 targetFolder="Builds/VisualStudio2019">
+      <CONFIGURATIONS>
+        <CONFIGURATION isDebug="1" name="Debug" targetName="HtmlTextEditor"/>
+        <CONFIGURATION isDebug="0" name="Release" targetName="HtmlTextEditor"/>
+      </CONFIGURATIONS>
+      <MODULEPATHS>
+        <MODULEPATH id="juce_core" path="../../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_data_structures" path="../../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_events" path="../../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_graphics" path="../../../../../JUCE/modules"/>
+        <MODULEPATH id="juce_gui_basics" path="../../../../../JUCE/modules"/>
+      </MODULEPATHS>
+    </VS2019>
+  </EXPORTFORMATS>
+  <MODULES>
+    <MODULE id="juce_core" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_data_structures" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_events" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_graphics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+    <MODULE id="juce_gui_basics" showAllCode="1" useLocalCopy="0" useGlobalPath="1"/>
+  </MODULES>
+  <LIVE_SETTINGS>
+    <WINDOWS/>
+  </LIVE_SETTINGS>
+</JUCERPROJECT>
