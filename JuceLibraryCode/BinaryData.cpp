@@ -38,7 +38,7 @@ static const unsigned char temp_binary_data_0[] =
 "<li>Item # 3\r\n"
 "</ul>\r\n"
 "<br>\r\n"
-"<a href=\"#page2\">This link calls an internal function</a> that will load a new HTML page.\r\n"
+"<a href=\"page2.htm\">This link calls an internal function</a> that will load a new HTML page.\r\n"
 "<br>\r\n"
 "<br>\r\n"
 "<a href=\"#alert=Hello world.\">This link will open a dialog window</a>.\r\n"
@@ -55,7 +55,7 @@ static const unsigned char temp_binary_data_1[] =
 "<h1>This is page 2</h1>\r\n"
 "\r\n"
 "<br>\r\n"
-"<a href=\"#page1\">Return to page 1</a>.\r\n"
+"<a href=\"page1.htm\">Return to page 1</a>.\r\n"
 "<br>\r\n"
 "<br>\r\n"
 "If you like this program, visit <a href=\"https://www.genuinesoundware.com\">www.GenuineSoundware.com</a> and share some thought with us.\r\n"
@@ -76,8 +76,8 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
 
     switch (hash)
     {
-        case 0x321d22a4:  numBytes = 854; return page1_htm;
-        case 0x322b3a25:  numBytes = 306; return page2_htm;
+        case 0x321d22a4:  numBytes = 857; return page1_htm;
+        case 0x322b3a25:  numBytes = 309; return page2_htm;
         default: break;
     }
 

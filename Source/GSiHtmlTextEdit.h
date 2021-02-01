@@ -285,6 +285,9 @@ public:
     {
         if (hoverLink)
         {
+            hoverPosition.x = jlimit<int>(0, getWidth() - toolTipWidth, hoverPosition.x);
+            hoverPosition.y = jlimit<int>(0, getHeight() - 25, hoverPosition.y);
+
             g.setFont(toolTipFont);
             g.setColour(Colours::beige);
             g.fillRoundedRectangle(hoverPosition.x, hoverPosition.y, toolTipWidth, 25, 5.f);
@@ -313,7 +316,7 @@ public:
             if (l.position.contains(i))
             {
                 textEditor->setMouseCursor(MouseCursor::PointingHandCursor);
-                if (l.url.startsWithChar('#')) break;
+                if (!l.url.startsWithIgnoreCase("http")) break;
 
                 hoverLink = true;
                 hoverLinkText = l.url;
@@ -337,7 +340,7 @@ public:
                     URL w(l.url);
                     w.launchInDefaultBrowser();
                 }
-                else if (l.url.startsWithChar('#'))
+                else
                 {
                     if (internalLinkFunction != nullptr)
                         internalLinkFunction(l.url);

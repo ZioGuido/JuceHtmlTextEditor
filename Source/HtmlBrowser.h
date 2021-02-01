@@ -63,7 +63,7 @@ public:
     void Show()
     {
         history.clear();
-        LoadPage("#page1");
+        LoadPage("page1.htm");
         Desktop::getInstance().getAnimator().fadeIn(this, 250);
     }
 
@@ -74,6 +74,7 @@ public:
 
     void Back()
     {
+        if (history.size() == 1) return;
         if (history.size() > 1) history.removeLast();
         LoadPage(history.getLast(), true);
     }
@@ -82,7 +83,7 @@ public:
     {
         if (!goingBack) history.add(page);
 
-        String resource = page.replace("#", "") + "_htm";
+        String resource = page.replace(".", "_");
         int FileSize = 0;
         
         // Get the file from the resources

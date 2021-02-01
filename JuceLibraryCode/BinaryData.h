@@ -9,10 +9,10 @@
 namespace BinaryData
 {
     extern const char*   page1_htm;
-    const int            page1_htmSize = 854;
+    const int            page1_htmSize = 857;
 
     extern const char*   page2_htm;
-    const int            page2_htmSize = 306;
+    const int            page2_htmSize = 309;
 
     // Number of elements in the namedResourceList and originalFileNames arrays.
     const int namedResourceListSize = 2;
