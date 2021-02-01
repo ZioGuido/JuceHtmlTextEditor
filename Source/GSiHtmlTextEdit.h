@@ -31,6 +31,7 @@ public:
         textEditor->setReadOnly(true);
         textEditor->setPopupMenuEnabled(false);
         textEditor->setLineSpacing(1.1f);
+        textEditor->setIndents(5, 20);
         textEditor->setColour(TextEditor::ColourIds::outlineColourId, Colour(0));
         textEditor->setColour(TextEditor::ColourIds::focusedOutlineColourId, Colour(0));
         addAndMakeVisible(textEditor.get());
@@ -251,9 +252,6 @@ public:
                     auto sz = tag.getLastCharacters(1).getIntValue();
                     fontSize = 40 - sz * 4;
                     doSetFont();
-
-                    // Add newline before header text
-                    textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
 
                 else if (tag.startsWithIgnoreCase("/h") && tag.containsAnyOf("1234"))

@@ -9,7 +9,7 @@
 namespace BinaryData
 {
     extern const char*   page1_htm;
-    const int            page1_htmSize = 855;
+    const int            page1_htmSize = 854;
 
     extern const char*   page2_htm;
     const int            page2_htmSize = 306;

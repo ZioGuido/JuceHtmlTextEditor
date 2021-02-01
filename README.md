@@ -12,10 +12,11 @@ Currently, the only tags that are correctly supported are:
 - Bold <b>
 - Italic <i>
 - Underlined <u>
-- Font <font> with properties size="" and color=""
+- Font <font> with properties size="" color="" and face=""
 - Headers <h1> ... <h4>
 - Unordered list <ul> and <li>
 - Anchor <a>
+- Break line <br>
 
 Evething else between < and > will fail the parsing and will not be rendered as text, 
 so also using comments between <!-- and --> will work.

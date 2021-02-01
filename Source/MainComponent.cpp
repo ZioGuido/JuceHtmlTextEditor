@@ -13,6 +13,8 @@ MainComponent::MainComponent()
     browser.reset(new SimpleHtmlBrowser());
     browser->setBounds(0, 0, getWidth(), getHeight());
     addChildComponent(browser.get());
+
+    browser->Show();
 }
 
 MainComponent::~MainComponent()
