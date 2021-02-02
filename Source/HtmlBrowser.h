@@ -38,6 +38,7 @@ public:
 
         btnBack.reset(new SquareButton("<< BACK", 1));
         btnBack->onClickCallback = [&](const MouseEvent&) { Back(); };
+        btnBack->setEnabled(false);
         addAndMakeVisible(btnBack.get());
 
         dialog.reset(new GSiDialogWindow());
@@ -82,6 +83,7 @@ public:
     void LoadPage(const String& page, bool goingBack = false)
     {
         if (!goingBack) history.add(page);
+        btnBack->setEnabled(history.size() > 1);
 
         String resource = page.replace(".", "_");
         int FileSize = 0;
