@@ -32,4 +32,13 @@ Also, remember to close the tags with the corresponding slashed tag.
 The example also shows how to handle the anchor tag to invoke program's internal functions such as opening a dialog window.
 Two more custom classes are included, one to create buttons that can either be on/off switches or pushbuttons, and another to create a dialog window that doesn't need to be necessarily modal.
 
+Note for Linux:
+most Linux distributions don't include the most common Fonts like Verdana, Arial, Times New Roman, etc. which are typically Microsoft Fonts.
+To install these fonts:
+
+```html
+# sudo apt install ttf-mscorefonts-installer
+```
+
+
 If you like this program, visit www.GenuineSoundware.com and try some of our software.
