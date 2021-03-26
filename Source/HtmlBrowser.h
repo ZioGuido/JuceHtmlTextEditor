@@ -31,6 +31,7 @@ public:
         htmlView->setNormalFontSize(15.f);
         htmlView->setBackgroundColor(Colour(0xFF404050));
         addAndMakeVisible(htmlView.get());
+        //htmlView->setShowAnchorPopup(false);
         
         btnClose.reset(new SquareButton("CLOSE", 1));
         btnClose->onClickCallback = [&](const MouseEvent&){ Hide(); };

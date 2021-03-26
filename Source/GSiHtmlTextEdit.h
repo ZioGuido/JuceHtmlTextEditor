@@ -38,6 +38,7 @@ public:
 
         // Set defaults
         Reset(true);
+        setShowAnchorPopup(true);
 
         // Used to catch mouse movement
         addMouseListener(this, true);
@@ -97,7 +98,11 @@ public:
         linkColor = col;
     }
 
-    
+    void setShowAnchorPopup(bool show)
+    {
+        showAnchorPopup = show;
+    }
+
     //==============================================================================
 
     // Use this in case you need to access TextEditor's members from the outside
@@ -316,7 +321,7 @@ public:
             if (l.position.contains(i))
             {
                 textEditor->setMouseCursor(MouseCursor::PointingHandCursor);
-                if (!l.url.startsWithIgnoreCase("http")) break;
+                if (!l.url.startsWithIgnoreCase("http") || !showAnchorPopup) break;
 
                 hoverLink = true;
                 hoverLinkText = l.url;
@@ -365,6 +370,7 @@ private:
     float fontSize, prev_fontSize;
     int fontStyle = Font::FontStyleFlags::plain;
     Colour fontColor, prev_fontColor, linkColor = Colours::yellow;
+    bool showAnchorPopup = true;
     
     bool hoverLink = false;
     String hoverLinkText = String();
