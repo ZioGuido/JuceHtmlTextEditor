@@ -2,8 +2,9 @@
   ==============================================================================
 
     GSiHtmlTextEdit.h
-    Created: 29 Jan 2021 6:32:02pm
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
+    Created: 29 Jan 2021 6:32:02pm
+    Last Update: 27 March 2021
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -34,11 +35,13 @@ public:
         textEditor->setIndents(5, 20);
         textEditor->setColour(TextEditor::ColourIds::outlineColourId, Colour(0));
         textEditor->setColour(TextEditor::ColourIds::focusedOutlineColourId, Colour(0));
+        //textEditor->setColour(TextEditor::ColourIds::highlightColourId, Colours::transparentBlack);
         addAndMakeVisible(textEditor.get());
 
         // Set defaults
         Reset(true);
         setShowAnchorPopup(true);
+        setMobileStyle(false);
 
         // Used to catch mouse movement
         addMouseListener(this, true);
@@ -102,6 +105,35 @@ public:
     {
         showAnchorPopup = show;
     }
+
+    // Call this to 1) disable text hightlight and 2) have drag scroll. You should also disable the scroll bars.
+    void setMobileStyle(bool set)
+    {
+        mobileStyle = set;
+
+        /*
+        * In order to obtain a mobile style read-only TextEditor, we should:
+        * 1) disable the scroll by scroll bar or mouse wheel
+        * 2) disable text hightlight
+        * Which are two things still not available for the TextEditor component as of Juce 6.0.8.
+        * The trick is to put the entire TextEditor into an external ViewPort and have the 
+        * TextEditor component to cover the entire text height; and in order to disable normal 
+        * mouse interaction and just have drag scroll, a transparent component will be overlaid.
+        */
+
+        if (mobileStyle)
+        {
+            transparentLayer.reset(new Component());
+
+            textEditor->addAndMakeVisible(transparentLayer.get());
+            mobileStyleViewPort.setViewedComponent(textEditor.get(), false);
+            mobileStyleViewPort.setScrollBarsShown(false, false, true, false);
+            mobileStyleViewPort.setScrollOnDragEnabled(true);
+            addAndMakeVisible(mobileStyleViewPort);
+        }
+        resized();
+    }
+
 
     //==============================================================================
 
@@ -281,6 +313,11 @@ public:
         // Print the remaining output buffer
         textEditor->setCaretPosition(charCounter);
         textEditor->insertTextAtCaret(output);
+
+        totalTextHeight = textEditor->getTextHeight();
+        DBG("Text Height: " << totalTextHeight);
+
+        if (mobileStyle) resized();
     }
 
 
@@ -303,7 +340,13 @@ public:
 
     void resized() override
     {
-        textEditor->setBounds(0, 0, getWidth(), getHeight());
+        textEditor->setBounds(0, 0, getWidth(), mobileStyle ? totalTextHeight : getHeight());
+
+        if (transparentLayer != nullptr)
+        {
+            transparentLayer->setBounds(textEditor->getBounds());
+            mobileStyleViewPort.setBounds(0, 0, getWidth(), getHeight());
+        }
     }
 
     void mouseMove(const MouseEvent& event)
@@ -364,6 +407,8 @@ public:
 
 private:
     std::unique_ptr<TextEditor> textEditor;
+    std::unique_ptr<Component> transparentLayer;
+    Viewport mobileStyleViewPort;
 
     int charCounter;
     String fontFace, prev_fontFace;
@@ -371,6 +416,8 @@ private:
     int fontStyle = Font::FontStyleFlags::plain;
     Colour fontColor, prev_fontColor, linkColor = Colours::yellow;
     bool showAnchorPopup = true;
+    bool mobileStyle = false;
+    int totalTextHeight = 0;
     
     bool hoverLink = false;
     String hoverLinkText = String();
