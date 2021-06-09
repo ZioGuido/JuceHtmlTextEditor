@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 27 March 2021
+    Last Update: 09 June 2021
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -146,10 +146,12 @@ public:
     // Parse and add some HTML to the TextEditor component
     void appendHtml(const String& HTML)
     {
-        String input = HTML.replace("\r\n", "\n").replace("\n", "");
+        String input = HTML.replace("\r\n", "\n");
 
         bool beginTag = false, canParse = false;
         String tag, output;
+        juce_wchar lastChar = 0;
+        bool renderPreFormatted = false;
 
         for (auto s : input)
         {
@@ -183,7 +185,7 @@ public:
             {
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Break line
-                if (tag == "br") { textEditor->insertTextAtCaret("\n"); charCounter++; }
+                if (tag == "br") { lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++; }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Italic
@@ -278,7 +280,7 @@ public:
                 else if (tag.startsWithIgnoreCase("/ul"))
                 {
                     // Add newline after unordered list
-                    textEditor->insertTextAtCaret("\n"); charCounter++;
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -297,16 +299,56 @@ public:
                     doSetFont();
 
                     // Add newline after header text
-                    textEditor->insertTextAtCaret("\n"); charCounter++;
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
                 
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // Pre-formatted
+                else if (tag == "pre") 
+                { 
+                    renderPreFormatted = true;
+                    fontStyle = Font::FontStyleFlags::plain;
+                    prev_fontFace = fontFace;
+                    fontFace = Font::getDefaultMonospacedFontName();
+                    fontSize = prev_fontSize;
+                    doSetFont();
+                }
+
+                else if (tag == "/pre")
+                {
+                    renderPreFormatted = false;
+                    fontFace = prev_fontFace;
+                    doSetFont();
+                }
+
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 tag.clear();
                 continue;
             }
 
-            // Add the plain characters to the output buffer
-            output += String::charToString(s);
+            // In pre-formatted mode, every character is rendered as is
+            if (renderPreFormatted)
+            {
+                lastChar = s;
+            }
+
+            // Normal rendering mode
+            else
+            {
+                // Skip multiple new lines
+                if (lastChar == '\n' && s == '\n') continue;
+
+                // Don't render white spaces at begin of new line
+                if (lastChar == '\n' && s == ' ') continue;
+
+                // Don't render multiple white spaces
+                if (lastChar == ' ' && s == ' ') continue;
+
+                lastChar = (s == '\n') ? ' ' : s;
+            }
+
+            // Add the plain characters to the output buffer and replace new line with white space
+            output += String::charToString(lastChar);
             charCounter++;
         }
 

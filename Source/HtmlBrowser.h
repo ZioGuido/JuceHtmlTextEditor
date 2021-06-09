@@ -5,6 +5,8 @@
     Created: 31 Jan 2021
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
 
+    Last update: 09 June 2021
+
     Not an actual browser! This is nothing but a component that hosts the 
     GSiHtmlTextEditor class to display some hypertext and handles links
     for internal functions.
@@ -19,7 +21,7 @@
 #include "Common_UI.h"
 
 //==============================================================================
-class SimpleHtmlBrowser  : public juce::Component
+class SimpleHtmlBrowser  : public juce::Component, juce::KeyListener
 {
 public:
     SimpleHtmlBrowser()
@@ -56,6 +58,9 @@ public:
             else
                 LoadPage(s);
         };
+
+        addKeyListener(this);
+        setWantsKeyboardFocus(true);
     }
 
     ~SimpleHtmlBrowser() override
@@ -86,13 +91,16 @@ public:
         if (!goingBack) history.add(page);
         btnBack->setEnabled(history.size() > 1);
 
+#if JUCE_WINDOWS && _DEBUG
+        // Load HTML from file in DEBUG mode
+        String HTML = File::getCurrentWorkingDirectory().getChildFile("../../Source/Resources/" + page).loadFileAsString();
+#else
+        // Get the file from the resources
         String resource = page.replace(".", "_");
         int FileSize = 0;
-        
-        // Get the file from the resources
         String HTML = String(BinaryData::getNamedResource(resource.toRawUTF8(), FileSize));
-        
-        if (FileSize <= 0) return;
+#endif
+        if (HTML.isEmpty()) return;
 
         htmlView->Reset();
         htmlView->appendHtml(HTML);
@@ -117,6 +125,19 @@ private:
     std::unique_ptr<GSiDialogWindow> dialog;
 
     Array<String> history;
+
+
+    bool keyPressed(const KeyPress& key, Component* originatingComponent) override
+    {
+#if (_DEBUG && JUCE_WINDOWS)
+        if (key == key.F5Key)
+        {
+            LoadPage("page1.htm");
+        }
+#endif
+        return true;
+    }
+
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleHtmlBrowser)

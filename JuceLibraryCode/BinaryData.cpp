@@ -20,18 +20,18 @@ static const unsigned char temp_binary_data_0[] =
 "<br>\r\n"
 "<u>This text is underlined.</u>\r\n"
 "<br>\r\n"
-"<u><b>This text is bold and underlined.</b></u>\r\n"
+"<u><b>This text is   bold   and   underlined.</b></u>\r\n"
 "<br>\r\n"
 "<font color=\"#FF2020\">This text is red</font>\r\n"
 "<br>\r\n"
 "<font size=\"32\" color=\"#20FF20\">This text is big and green</font>\r\n"
 "<br>\r\n"
-"<a href=\"https://www.juce.com\">This is a hyperlink to www.juce.com</a>\r\n"
+"<a href=\"https://www.juce.com\">This is a    hyperlink to    www.juce.com</a>\r\n"
 "<br>\r\n"
 "<br>\r\n"
 "<h3>This is a header</h3>\r\n"
 "<br>\r\n"
-"<font face=\"Times New Roman\">This line in Times New Roman introduces an unordered list</font>\r\n"
+"<font face=\"Times New Roman\">This line in Times New Roman introduces an     unordered list</font>\r\n"
 "<ul>\r\n"
 "<li>Item # 1\r\n"
 "<li>Item # 2\r\n"
@@ -43,7 +43,31 @@ static const unsigned char temp_binary_data_0[] =
 "<br>\r\n"
 "<a href=\"#alert=Hello world.\">This link will open a dialog window</a>.\r\n"
 "<br>\r\n"
-"Some final plain text.\r\n";
+"\r\n"
+"<pre>\r\n"
+"// This is a pre-formatted text, useful for rendering source code\r\n"
+"int doSum(int a, int b)\r\n"
+"{\r\n"
+"    return a + b;\r\n"
+"}\r\n"
+"</pre>\r\n"
+"<br>\r\n"
+"\r\n"
+"\r\n"
+"If this program has been compiled\r\n"
+"under Windows in _DEBUG mode,\r\n"
+"you can modify this HTML page\r\n"
+"and press F5 to reload the file\r\n"
+"and see the results immediately\r\n"
+"without having to recompile.\r\n"
+"\r\n"
+"\r\n"
+"<!--\r\n"
+"This is a comment.\r\n"
+"Multiple consecutive white spaces or new lines \r\n"
+"have been inserted to check that they're properly rendered.\r\n"
+"This comment will not appear in the rendered page.\r\n"
+"-->\r\n";
 
 const char* page1_htm = (const char*) temp_binary_data_0;
 
@@ -76,7 +100,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
 
     switch (hash)
     {
-        case 0x321d22a4:  numBytes = 857; return page1_htm;
+        case 0x321d22a4:  numBytes = 1383; return page1_htm;
         case 0x322b3a25:  numBytes = 309; return page2_htm;
         default: break;
     }
