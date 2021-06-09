@@ -146,33 +146,37 @@ public:
     // Parse and add some HTML to the TextEditor component
     void appendHtml(const String& HTML)
     {
+        bool beginTag = false, canParseTag = false;
+        bool beginEncoded = false, canParseEncoding = false;
+        bool renderPreFormatted = false;
+        String tag, code, output;
+        juce_wchar lastChar = 0;
+
+        // Replace CRLF with just LF
         String input = HTML.replace("\r\n", "\n");
 
-        bool beginTag = false, canParse = false;
-        String tag, output;
-        juce_wchar lastChar = 0;
-        bool renderPreFormatted = false;
-
+        // Parse each single character in the HTML text
         for (auto s : input)
         {
+            // Catch HTML tag opening
             if (s == '<')
             {
-                // Add the text already rendered
                 textEditor->setCaretPosition(charCounter); 
                 textEditor->insertTextAtCaret(output);
                 output.clear();
 
                 beginTag = true;
-                canParse = false;
+                canParseTag = false;
                 continue;
             }
 
+            // Read HTML tag or catch its closing
             if (beginTag)
             {
                 if (s == '>')
                 {
                     beginTag = false;
-                    canParse = true;
+                    canParseTag = true;
                 }
                 else 
                 {
@@ -181,7 +185,54 @@ public:
                 }
             }
 
-            if (canParse && tag.isNotEmpty())
+            // Catch HTML-Encoded character
+            if (s == '&')
+            {
+                // Add the text already rendered
+                textEditor->setCaretPosition(charCounter);
+                textEditor->insertTextAtCaret(output);
+                output.clear();
+
+                beginEncoded = true;
+                canParseEncoding = false;
+                continue;
+            }
+
+            // Read HTML-Encoding or catch encoding closure
+            if (beginEncoded)
+            {
+                if (s == ';')
+                {
+                    beginEncoded = false;
+                    canParseEncoding = true;
+                }
+                else
+                {
+                    code += s;
+                    continue;
+                }
+            }
+
+            // Parse some common HTML-Encoded characters
+            if (canParseEncoding && code.isNotEmpty())
+            {
+                if (code == "nbsp")     textEditor->insertTextAtCaret(" ");     // Non-breakable space
+                if (code == "amp")      textEditor->insertTextAtCaret("&");     // Ampersand
+                if (code == "quot")     textEditor->insertTextAtCaret("\"");    // Quotation mark
+                if (code == "lt")       textEditor->insertTextAtCaret("<");
+                if (code == "rt")       textEditor->insertTextAtCaret(">");
+                if (code == "laquo")    textEditor->insertTextAtCaret(CharPointer_ASCII ("«"));
+                if (code == "raquo")    textEditor->insertTextAtCaret(CharPointer_ASCII ("»"));
+
+                // A good solution would be to have a hash table with codes and their corresponding UNICODE characters...
+                
+                charCounter++;
+                code.clear();
+                continue;
+            }
+
+            // Parse Tags
+            if (canParseTag && tag.isNotEmpty())
             {
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Break line
@@ -189,13 +240,13 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Italic
-                else if (tag ==  "i") { fontStyle |= Font::FontStyleFlags::italic;      doSetFont(); }
-                else if (tag == "/i") { fontStyle ^= Font::FontStyleFlags::italic;      doSetFont(); }
+                else if (tag ==  "i" || tag ==  "em")       { fontStyle |= Font::FontStyleFlags::italic;    doSetFont(); }
+                else if (tag == "/i" || tag == "/em")       { fontStyle ^= Font::FontStyleFlags::italic;    doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Bold
-                else if (tag ==  "b") { fontStyle |= Font::FontStyleFlags::bold;        doSetFont(); }
-                else if (tag == "/b") { fontStyle ^= Font::FontStyleFlags::bold;        doSetFont(); }
+                else if (tag ==  "b" || tag ==  "strong")   { fontStyle |= Font::FontStyleFlags::bold;      doSetFont(); }
+                else if (tag == "/b" || tag == "/strong")   { fontStyle ^= Font::FontStyleFlags::bold;      doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Underlined
@@ -276,10 +327,9 @@ public:
                     textEditor->insertTextAtCaret(indent);
                     charCounter += indent.length();
                 }
-
-                else if (tag.startsWithIgnoreCase("/ul"))
+                else if (tag.startsWithIgnoreCase("/ul") || tag.startsWithIgnoreCase("/ol"))
                 {
-                    // Add newline after unordered list
+                    // Add newline after unordered (or ordered) list
                     lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
 
@@ -292,16 +342,50 @@ public:
                     fontSize = 40 - sz * 4;
                     doSetFont();
                 }
-
                 else if (tag.startsWithIgnoreCase("/h") && tag.containsAnyOf("1234"))
                 {
                     fontSize = prev_fontSize;
                     doSetFont();
 
-                    // Add newline after header text
-                    lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+                    // Add double newline after header text
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n\n"); charCounter += 2;
                 }
-                
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // Paragraph
+                else if (tag.startsWithIgnoreCase("p "))
+                {
+                    // Nothing to do here...
+                }
+                else if (tag == "/p")
+                {
+                    // Add double newline after paragraph end
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n\n"); charCounter += 2;
+                }
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // Span
+                else if (tag.startsWithIgnoreCase("span "))
+                {
+                    if (tag.containsIgnoreCase("style"))
+                    {
+                        int i1 = tag.indexOf("style=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
+                        auto styleString = tag.substring(i1, i2).replace("\"", "");
+                        parseInlineStyle(styleString);
+                    }
+                }
+                else if (tag.startsWithIgnoreCase("/span"))
+                {
+                    fontSize = prev_fontSize;
+                    fontColor = prev_fontColor;
+                    fontFace = prev_fontFace;
+                    fontStyle = Font::FontStyleFlags::plain;
+                    doSetFont();
+
+                    fontColor = prev_fontColor;
+                    textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
+                }
+
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Pre-formatted
                 else if (tag == "pre") 
@@ -313,7 +397,6 @@ public:
                     fontSize = prev_fontSize;
                     doSetFont();
                 }
-
                 else if (tag == "/pre")
                 {
                     renderPreFormatted = false;
@@ -344,10 +427,11 @@ public:
                 // Don't render multiple white spaces
                 if (lastChar == ' ' && s == ' ') continue;
 
+                // Replace new line with white space
                 lastChar = (s == '\n') ? ' ' : s;
             }
 
-            // Add the plain characters to the output buffer and replace new line with white space
+            // Add the plain characters to the output buffer
             output += String::charToString(lastChar);
             charCounter++;
         }
@@ -477,6 +561,49 @@ private:
     void doSetFont()
     {
         textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+    }
+
+    // Attempt to parse some basic inline CSS
+    void parseInlineStyle(const String& inlineStyleString)
+    {
+        prev_fontSize = fontSize;
+        prev_fontColor = fontColor;
+        prev_fontFace = fontFace;
+
+        auto styles = StringArray::fromTokens(inlineStyleString, ";", "'");
+        for (auto style : styles)
+        {
+            auto pair = StringArray::fromTokens(style, ":", "'");
+            if (pair.size() < 2 ) continue;
+            auto key = pair[0].trim();
+            auto val = pair[1].trim();
+            //DBG("Key: " << key << " Value: " << val);
+
+            if (key == "text-decoration")
+            {
+                if (val.contains("underline")) fontStyle |= Font::FontStyleFlags::underlined;
+            }
+            if (key == "font-weight")
+            {
+                if (val.contains("bold")) fontStyle |= Font::FontStyleFlags::bold;
+            }
+            if (key == "font-size")
+            {
+                if (val.contains("px")) fontSize = val.replace("px", "").getIntValue();
+            }
+            if (key == "font-family")
+            {
+                fontFace = val.replace("'", "");
+            }
+            if (key == "color")
+            {
+                auto col = val.replace("#", "").getHexValue32() + 0xFF000000;
+                fontColor = Colour(col);
+                textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
+            }
+        }
+
+        doSetFont();
     }
 
     //==============================================================================

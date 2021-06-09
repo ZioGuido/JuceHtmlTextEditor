@@ -22,9 +22,8 @@ static const unsigned char temp_binary_data_0[] =
 "<br>\r\n"
 "<u><b>This text is   bold   and   underlined.</b></u>\r\n"
 "<br>\r\n"
-"<font color=\"#FF2020\">This text is red</font>\r\n"
-"<br>\r\n"
-"<font size=\"32\" color=\"#20FF20\">This text is big and green</font>\r\n"
+"<font color=\"#FF2020\">This text is red and contains&nbsp;&nbsp;&nbsp; multiple&nbsp;&nbsp;&nbsp; &quot;whitespaces&quot;.</font><br>\r\n"
+"<font size=\"32\" color=\"#20FF20\">This text is big and &laquo;green&raquo;</font>\r\n"
 "<br>\r\n"
 "<a href=\"https://www.juce.com\">This is a    hyperlink to    www.juce.com</a>\r\n"
 "<br>\r\n"
@@ -33,8 +32,7 @@ static const unsigned char temp_binary_data_0[] =
 "<br>\r\n"
 "<font face=\"Times New Roman\">This line in Times New Roman introduces an     unordered list</font>\r\n"
 "<ul>\r\n"
-"<li>Item # 1\r\n"
-"<li>Item # 2\r\n"
+"<li>Item # 1<li>Item # 2\r\n"
 "<li>Item # 3\r\n"
 "</ul>\r\n"
 "<br>\r\n"
@@ -55,7 +53,7 @@ static const unsigned char temp_binary_data_0[] =
 "\r\n"
 "\r\n"
 "If this program has been compiled\r\n"
-"under Windows in _DEBUG mode,\r\n"
+"under <span style=\"text-decoration: underline; color: #CC0000; font-weight: bold; font-size: 25px; font-family: 'Comic Sans MS'\">Windows</span> in _DEBUG mode,\r\n"
 "you can modify this HTML page\r\n"
 "and press F5 to reload the file\r\n"
 "and see the results immediately\r\n"
@@ -100,7 +98,7 @@ const char* getNamedResource (const char* resourceNameUTF8, int& numBytes)
 
     switch (hash)
     {
-        case 0x321d22a4:  numBytes = 1383; return page1_htm;
+        case 0x321d22a4:  numBytes = 1606; return page1_htm;
         case 0x322b3a25:  numBytes = 309; return page2_htm;
         default: break;
     }

@@ -3,16 +3,15 @@
 //==============================================================================
 MainComponent::MainComponent()
 {
-    setSize (800, 600);
-
     btnOpen.reset(new SquareButton("Open browser", 1));
     addAndMakeVisible(btnOpen.get());
     btnOpen->onClickCallback = [&](const MouseEvent&) { browser->Show(); };
     btnOpen->centreWithSize(120, 30);
 
     browser.reset(new SimpleHtmlBrowser());
-    browser->setBounds(0, 0, getWidth(), getHeight());
     addChildComponent(browser.get());
+
+    setSize(800, 600);
 
     browser->Show();
 }
@@ -29,4 +28,5 @@ void MainComponent::paint (juce::Graphics& g)
 
 void MainComponent::resized()
 {
+    browser->setBounds(0, 0, getWidth(), getHeight());
 }
