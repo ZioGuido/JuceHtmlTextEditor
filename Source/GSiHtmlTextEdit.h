@@ -221,8 +221,9 @@ public:
                 if (code == "quot")     textEditor->insertTextAtCaret("\"");    // Quotation mark
                 if (code == "lt")       textEditor->insertTextAtCaret("<");
                 if (code == "rt")       textEditor->insertTextAtCaret(">");
-                if (code == "laquo")    textEditor->insertTextAtCaret(CharPointer_ASCII ("«"));
-                if (code == "raquo")    textEditor->insertTextAtCaret(CharPointer_ASCII ("»"));
+                if (code == "laquo")    textEditor->insertTextAtCaret(String::charToString(171));
+                if (code == "raquo")    textEditor->insertTextAtCaret(String::charToString(187));
+                if (code.startsWith("#")) textEditor->insertTextAtCaret(String::charToString(code.substring(1).getIntValue()));
 
                 // A good solution would be to have a hash table with codes and their corresponding UNICODE characters...
                 
@@ -236,7 +237,7 @@ public:
             {
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Break line
-                if (tag == "br") { lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++; }
+                if (tag.startsWithIgnoreCase("br ") || tag == "br") { lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++; }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Italic
@@ -353,14 +354,15 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Paragraph
-                else if (tag.startsWithIgnoreCase("p "))
+                else if (tag.startsWithIgnoreCase("p ") || tag == "p")
                 {
-                    // Nothing to do here...
+                    // Add newline before paragraph
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
                 else if (tag == "/p")
                 {
-                    // Add double newline after paragraph end
-                    lastChar = '\n'; textEditor->insertTextAtCaret("\n\n"); charCounter += 2;
+                    // Add newline after paragraph
+                    lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -394,12 +396,13 @@ public:
                     fontStyle = Font::FontStyleFlags::plain;
                     prev_fontFace = fontFace;
                     fontFace = Font::getDefaultMonospacedFontName();
-                    fontSize = prev_fontSize;
+                    fontSize = 12;
                     doSetFont();
                 }
                 else if (tag == "/pre")
                 {
                     renderPreFormatted = false;
+                    fontSize = prev_fontSize;
                     fontFace = prev_fontFace;
                     doSetFont();
                 }
@@ -475,7 +478,7 @@ public:
         }
     }
 
-    void mouseMove(const MouseEvent& event)
+    void mouseMove(const MouseEvent& event) override
     {
         if (textEditor->getMouseCursor() != MouseCursor::NormalCursor)
         {
@@ -502,7 +505,7 @@ public:
         }
     }
 
-    void mouseUp(const MouseEvent& event)
+    void mouseUp(const MouseEvent& event) override
     {
         for (auto l : AllLinks)
         {
