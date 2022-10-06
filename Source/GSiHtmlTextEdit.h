@@ -36,6 +36,7 @@ public:
         textEditor->setColour(TextEditor::ColourIds::outlineColourId, Colour(0));
         textEditor->setColour(TextEditor::ColourIds::focusedOutlineColourId, Colour(0));
         //textEditor->setColour(TextEditor::ColourIds::highlightColourId, Colours::transparentBlack);
+        textEditor->setColour(TextEditor::ColourIds::highlightColourId, findColour(TextEditor::ColourIds::backgroundColourId).contrasting());
         addAndMakeVisible(textEditor.get());
 
         // Set defaults
@@ -453,32 +454,38 @@ public:
         if (keywords.isEmpty())
         {
             searchResultCounter = 0;
-            searchResultHighlights.clear();
+            textEditor->setHighlightedRegion({0,0});
             repaint();
             return false;
         }
         
+        lastSearchString = keywords;
         auto plainTextPage = textEditor->getText(); //DBG("plainTextPage = " << plainTextPage);
 
         if (plainTextPage.containsIgnoreCase(keywords))
         {
             auto start = plainTextPage.indexOfIgnoreCase(searchResultCounter, keywords);
             
-            // No results or reachend end of results
+            // No results or reached end of results
             if (start < 0)
                 return searchAndHighlight(String());
 
             auto end = start + keywords.length();
             searchResultCounter = end;
-            textEditor->setCaretPosition(end);
 
-            //textEditor->setColour(TextEditor::ColourIds::highlightColourId, )
-            //textEditor->setHighlightedRegion({ start, end });
+            textEditor->setHighlightedRegion({ start, end });
 
-            searchResultHighlights = textEditor->getTextBounds({start, end});
+            if (mobileStyle)
+                mobileStyleViewPort.setViewPosition(0, textEditor->getCaretRectangle().getY());
+
             repaint();
             return true;
         }
+    }
+
+    bool GoToNextSearchResult()
+    {
+        return searchAndHighlight(lastSearchString);
     }
 
     //==============================================================================
@@ -495,12 +502,6 @@ public:
             g.fillRoundedRectangle(hoverPosition.x, hoverPosition.y, toolTipWidth, 25, 5.f);
             g.setColour(Colours::black);
             g.drawText(hoverLinkText, hoverPosition.x, hoverPosition.y, toolTipWidth, 25, Justification::centred);
-        }
-
-        if (!searchResultHighlights.isEmpty())
-        {
-            g.setColour(findColour(TextEditor::ColourIds::backgroundColourId).contrasting());
-            g.drawRect(searchResultHighlights.getBounds());
         }
     }
 
@@ -576,7 +577,7 @@ private:
     std::unique_ptr<Component> transparentLayer;
     Viewport mobileStyleViewPort;
 
-    juce::RectangleList<int> searchResultHighlights;
+    String lastSearchString;
     int charCounter, searchResultCounter;
     String fontFace, prev_fontFace;
     float fontSize, prev_fontSize;
