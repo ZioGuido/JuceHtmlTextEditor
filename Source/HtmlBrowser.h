@@ -44,6 +44,16 @@ public:
         btnBack->setEnabled(false);
         addAndMakeVisible(btnBack.get());
 
+        
+        btnSearch.reset(new SquareButton("Search", 1));
+        btnSearch->onClickCallback = [&](const MouseEvent&) { DoSearch(); };
+        addAndMakeVisible(btnSearch.get());
+
+        searchField.reset(new Label("searchField", "Search..."));
+        searchField->setEditable(true, false, false);
+        //searchField->onTextChange = [&] { DoSearch(); };
+        addAndMakeVisible(searchField.get());
+
         dialog.reset(new GSiDialogWindow());
         addChildComponent(dialog.get());
 
@@ -61,10 +71,6 @@ public:
 
         addKeyListener(this);
         setWantsKeyboardFocus(true);
-    }
-
-    ~SimpleHtmlBrowser() override
-    {
     }
 
     void Show()
@@ -107,6 +113,13 @@ public:
         htmlView->getPointerToTextEditorComponent()->moveCaretToTop(false);
     }
 
+    void DoSearch()
+    {
+        auto text = searchField->getText();
+        DBG("Search for: " << text);
+        htmlView->searchAndHighlight(text);
+    }
+
     void paint (juce::Graphics& g) override
     {
         g.fillAll(Colours::black);
@@ -117,12 +130,15 @@ public:
         htmlView->setBounds(0, 0, getWidth(), getHeight() - 40);
         btnClose->setBounds(getWidth() - 140, getHeight() - 35, 120, 30);
         btnBack->setBounds(getWidth() - 270, getHeight() - 35, 120, 30);
+        btnSearch->setBounds(getWidth() - 400, getHeight() - 35, 120, 30);
+        searchField->setBounds(10, getHeight() - 35, btnSearch->getX() - 20, 30);
     }
 
 private:
     std::unique_ptr<GSiHtmlTextEdit> htmlView;
-    std::unique_ptr<SquareButton> btnClose, btnBack;
+    std::unique_ptr<SquareButton> btnClose, btnBack, btnSearch;
     std::unique_ptr<GSiDialogWindow> dialog;
+    std::unique_ptr<Label> searchField;
 
     Array<String> history;
 

@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 09 June 2021
+    Last Update: 6 Nov 2022
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -47,13 +47,10 @@ public:
         addMouseListener(this, true);
     }
 
-    ~GSiHtmlTextEdit() override
-    {
-    }
-
     void Reset(bool fullReset = false)
     {
         charCounter = 0; // Character count
+        searchResultCounter = 0;
         AllLinks.clear();
         
         textEditor->clear();
@@ -128,7 +125,7 @@ public:
             textEditor->addAndMakeVisible(transparentLayer.get());
             mobileStyleViewPort.setViewedComponent(textEditor.get(), false);
             mobileStyleViewPort.setScrollBarsShown(false, false, true, false);
-            mobileStyleViewPort.setScrollOnDragEnabled(true);
+            mobileStyleViewPort.setScrollOnDragMode(Viewport::ScrollOnDragMode::all);
             addAndMakeVisible(mobileStyleViewPort);
         }
         resized();
@@ -449,6 +446,40 @@ public:
         if (mobileStyle) resized();
     }
 
+    // Pass a string to search for in the current document, or an empty string to clear search results
+    bool searchAndHighlight(const String& keywords)
+    {
+        // reset search
+        if (keywords.isEmpty())
+        {
+            searchResultCounter = 0;
+            searchResultHighlights.clear();
+            repaint();
+            return false;
+        }
+        
+        auto plainTextPage = textEditor->getText(); //DBG("plainTextPage = " << plainTextPage);
+
+        if (plainTextPage.containsIgnoreCase(keywords))
+        {
+            auto start = plainTextPage.indexOfIgnoreCase(searchResultCounter, keywords);
+            
+            // No results or reachend end of results
+            if (start < 0)
+                return searchAndHighlight(String());
+
+            auto end = start + keywords.length();
+            searchResultCounter = end;
+            textEditor->setCaretPosition(end);
+
+            //textEditor->setColour(TextEditor::ColourIds::highlightColourId, )
+            //textEditor->setHighlightedRegion({ start, end });
+
+            searchResultHighlights = textEditor->getTextBounds({start, end});
+            repaint();
+            return true;
+        }
+    }
 
     //==============================================================================
 
@@ -464,6 +495,12 @@ public:
             g.fillRoundedRectangle(hoverPosition.x, hoverPosition.y, toolTipWidth, 25, 5.f);
             g.setColour(Colours::black);
             g.drawText(hoverLinkText, hoverPosition.x, hoverPosition.y, toolTipWidth, 25, Justification::centred);
+        }
+
+        if (!searchResultHighlights.isEmpty())
+        {
+            g.setColour(findColour(TextEditor::ColourIds::backgroundColourId).contrasting());
+            g.drawRect(searchResultHighlights.getBounds());
         }
     }
 
@@ -539,7 +576,8 @@ private:
     std::unique_ptr<Component> transparentLayer;
     Viewport mobileStyleViewPort;
 
-    int charCounter;
+    juce::RectangleList<int> searchResultHighlights;
+    int charCounter, searchResultCounter;
     String fontFace, prev_fontFace;
     float fontSize, prev_fontSize;
     int fontStyle = Font::FontStyleFlags::plain;
