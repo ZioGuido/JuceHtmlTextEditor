@@ -423,14 +423,15 @@ public:
                     auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
                     cmp->setImage(img);
                     int caretH = textEditor->getCaretRectangle().getHeight();
+                    int x = textEditor->getLeftIndent();
                     int y = textEditor->getCaretRectangle().getY() + caretH;
                     int w = img.getWidth();
                     int h = img.getHeight();
 
-                    // Resize image (size is width, resize retains proportion)
-                    if (tag.containsIgnoreCase("size"))
+                    // Resize image (set width, keep aspect ratio)
+                    if (tag.containsIgnoreCase("width"))
                     {
-                        int i1 = tag.indexOf("size=") + 5; int i2 = tag.indexOfChar(i1 + 1, '"');
+                        int i1 = tag.indexOf("width=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
                         auto val = tag.substring(i1, i2).replace("\"", "").getIntValue();
                         if (val > 0)
                         {
@@ -441,13 +442,14 @@ public:
                     }
 
                     // Set Image size and position 
-                    cmp->setBounds(5, y, w, h);
+                    cmp->setBounds(x, y, w, h);
 
                     // Now this is tricky! There's no way to get the viewport that contains the text in a TextEditor.
-                    // This method digs into the component until reaching the viewport. Works with Juce 6.1.6 but may broke if the class is modified.
+                    // This method digs into the component until reaching the viewport. 
+                    // Works with Juce 6.1.6 but may break if the class is modified in future versions of Juce.
                     textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
 
-                    // Now calculate the amount of blank spaces needed to move the text right below the image using the last caret size
+                    // Now calculate the amount of break lines needed to move the text right below the image using the last caret size
                     int shiftY = round((float)h / (float)caretH);
                     for (int i = 0; i < shiftY; i++)
                     {
