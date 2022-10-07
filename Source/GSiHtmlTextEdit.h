@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 6 Nov 2022
+    Last Update: 7 Nov 2022
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -37,6 +37,7 @@ public:
         textEditor->setColour(TextEditor::ColourIds::focusedOutlineColourId, Colour(0));
         //textEditor->setColour(TextEditor::ColourIds::highlightColourId, Colours::transparentBlack);
         textEditor->setColour(TextEditor::ColourIds::highlightColourId, findColour(TextEditor::ColourIds::backgroundColourId).contrasting());
+        textEditor->setColour(TextEditor::ColourIds::highlightedTextColourId, findColour(TextEditor::ColourIds::highlightColourId).contrasting());
         addAndMakeVisible(textEditor.get());
 
         // Set defaults
@@ -51,8 +52,10 @@ public:
     void Reset(bool fullReset = false)
     {
         charCounter = 0; // Character count
-        searchResultCounter = 0;
+        lastSearchEndIndex = 0;
+        lastSearchString.clear();
         AllLinks.clear();
+        ImageComponents.clear();
         
         textEditor->clear();
         textEditor->setCaretPosition(0);
@@ -406,6 +409,53 @@ public:
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // Image
+                else if (tag.startsWithIgnoreCase("img "))
+                {
+                    int i1 = tag.indexOf("src=") + 5; int i2 = tag.indexOfChar(i1 + 1, '"');
+                    auto ImgSrc = tag.substring(i1, i2).replace("\"", "");
+
+                    int size(0);
+                    auto data = BinaryData::getNamedResource(ImgSrc.replace(".", "_").replace("-", "").toRawUTF8(), size);
+                    if (size == 0) continue;
+
+                    auto img = ImageCache::getFromMemory(data, size);
+                    auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
+                    cmp->setImage(img);
+                    int caretH = textEditor->getCaretRectangle().getHeight();
+                    int y = textEditor->getCaretRectangle().getY() + caretH;
+                    int w = img.getWidth();
+                    int h = img.getHeight();
+
+                    // Resize image (size is width, resize retains proportion)
+                    if (tag.containsIgnoreCase("size"))
+                    {
+                        int i1 = tag.indexOf("size=") + 5; int i2 = tag.indexOfChar(i1 + 1, '"');
+                        auto val = tag.substring(i1, i2).replace("\"", "").getIntValue();
+                        if (val > 0)
+                        {
+                            auto ratio = (float)h / (float)w;
+                            w = val;
+                            h = w * ratio;
+                        }
+                    }
+
+                    // Set Image size and position 
+                    cmp->setBounds(5, y, w, h);
+
+                    // Now this is tricky! There's no way to get the viewport that contains the text in a TextEditor.
+                    // This method digs into the component until reaching the viewport. Works with Juce 6.1.6 but may broke if the class is modified.
+                    textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
+
+                    // Now calculate the amount of blank spaces needed to move the text right below the image using the last caret size
+                    int shiftY = round((float)h / (float)caretH);
+                    for (int i = 0; i < shiftY; i++)
+                    {
+                        lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+                    }
+                }
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 tag.clear();
                 continue;
             }
@@ -450,12 +500,12 @@ public:
     // Pass a string to search for in the current document, or an empty string to clear search results
     bool searchAndHighlight(const String& keywords)
     {
-        // reset search
+        // Reset search
         if (keywords.isEmpty())
         {
-            searchResultCounter = 0;
+            lastSearchEndIndex = 0;
+            lastSearchString.clear();
             textEditor->setHighlightedRegion({0,0});
-            repaint();
             return false;
         }
         
@@ -464,28 +514,47 @@ public:
 
         if (plainTextPage.containsIgnoreCase(keywords))
         {
-            auto start = plainTextPage.indexOfIgnoreCase(searchResultCounter, keywords);
+            auto start = plainTextPage.indexOfIgnoreCase(lastSearchEndIndex, keywords);
             
-            // No results or reached end of results
+            // Reached end of results? Start searching from the beginning
             if (start < 0)
-                return searchAndHighlight(String());
+            {
+                lastSearchEndIndex = 0;
+                return GoToNextSearchResult();
+            }
 
-            auto end = start + keywords.length();
-            searchResultCounter = end;
+            lastSearchEndIndex = start + keywords.length();
 
-            textEditor->setHighlightedRegion({ start, end });
+            textEditor->setHighlightedRegion({ start, lastSearchEndIndex });
+            textEditor->grabKeyboardFocus();
 
             if (mobileStyle)
                 mobileStyleViewPort.setViewPosition(0, textEditor->getCaretRectangle().getY());
 
-            repaint();
             return true;
         }
+
+        return false;
     }
 
     bool GoToNextSearchResult()
     {
         return searchAndHighlight(lastSearchString);
+    }
+
+    int GetScrollY()
+    {
+        if (mobileStyle)
+            return mobileStyleViewPort.getViewPositionY();
+        else
+            return textEditor->getCaretRectangle().getY(); // Could not be accurate!
+    }
+
+    void SetScrollY(int y)
+    {
+        if (mobileStyle)
+            mobileStyleViewPort.setViewPosition(0, y);
+        // else ???
     }
 
     //==============================================================================
@@ -571,14 +640,14 @@ public:
     // Set a lambda that will be called whenever an internal link is clicked
     std::function<void(const String&)> internalLinkFunction;
 
+    String lastSearchString;
 
 private:
     std::unique_ptr<TextEditor> textEditor;
     std::unique_ptr<Component> transparentLayer;
     Viewport mobileStyleViewPort;
 
-    String lastSearchString;
-    int charCounter, searchResultCounter;
+    int charCounter, lastSearchEndIndex;
     String fontFace, prev_fontFace;
     float fontSize, prev_fontSize;
     int fontStyle = Font::FontStyleFlags::plain;
@@ -592,6 +661,8 @@ private:
     juce::Point<int> hoverPosition;
     Font toolTipFont = Font("Arial", 14.f, Font::FontStyleFlags::plain);
     int toolTipWidth = 100;
+
+    OwnedArray<ImageComponent> ImageComponents;
 
     struct HyperLink
     {
