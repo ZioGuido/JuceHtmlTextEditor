@@ -5,8 +5,11 @@
   <MAINGROUP id="htzgEz" name="HtmlTextEditor">
     <GROUP id="{B018CD0B-56CF-6F64-0054-17A86E8FB030}" name="Source">
       <GROUP id="{A0D6608F-281D-9841-7F7B-9F1280C93DF8}" name="Resources">
+        <FILE id="iApjDd" name="logo_GSi_680x219.png" compile="0" resource="1"
+              file="Source/Resources/logo_GSi_680x219.png"/>
         <FILE id="OJB0am" name="page1.htm" compile="0" resource="1" file="Source/Resources/page1.htm"/>
         <FILE id="asfcko" name="page2.htm" compile="0" resource="1" file="Source/Resources/page2.htm"/>
+        <FILE id="Jz5q6a" name="verdana.ttf" compile="0" resource="1" file="Source/Resources/verdana.ttf"/>
       </GROUP>
       <FILE id="bU54kX" name="Common_UI.h" compile="0" resource="0" file="Source/Common_UI.h"/>
       <FILE id="VKy6f8" name="GSiHtmlTextEdit.h" compile="0" resource="0"
