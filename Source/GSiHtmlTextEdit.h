@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 7 Nov 2022
+    Last Update: 9 Sep 2023
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -159,6 +159,13 @@ public:
         // Parse each single character in the HTML text
         for (auto s : input)
         {
+            if (Comment)
+            {
+                output += String::charToString(s);
+                if (output.endsWith("-->")) { Comment = false; output.clear(); }
+                continue;
+            }
+
             // Catch HTML tag opening
             if (s == '<')
             {
@@ -236,6 +243,8 @@ public:
             // Parse Tags
             if (canParseTag && tag.isNotEmpty())
             {
+                if (tag.startsWith("!--")) { Comment = true; }
+                
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Break line
                 if (tag.startsWithIgnoreCase("br ") || tag == "br") { lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++; }
@@ -319,6 +328,26 @@ public:
 
                     fontColor = prev_fontColor;
                     textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
+                }
+
+                //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                // Font size modifiers "small" and "big"
+                else if (tag == "small")
+                {
+                    prev_fontSize = fontSize;
+                    fontSize *= 0.75f;
+                    doSetFont();
+                }
+                else if (tag == "big")
+                {
+                    prev_fontSize = fontSize;
+                    fontSize *= 1.25f;
+                    doSetFont();
+                }
+                else if (tag == "/small" || tag == "/big")
+                {
+                    fontSize = prev_fontSize;
+                    doSetFont();
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -417,43 +446,50 @@ public:
 
                     int size(0);
                     auto data = BinaryData::getNamedResource(ImgSrc.replace(".", "_").replace("-", "").toRawUTF8(), size);
-                    if (size == 0) continue;
-
-                    auto img = ImageCache::getFromMemory(data, size);
-                    auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
-                    cmp->setImage(img);
-                    int caretH = textEditor->getCaretRectangle().getHeight();
-                    int x = textEditor->getLeftIndent();
-                    int y = textEditor->getCaretRectangle().getY() + caretH;
-                    int w = img.getWidth();
-                    int h = img.getHeight();
-
-                    // Resize image (set width, keep aspect ratio)
-                    if (tag.containsIgnoreCase("width"))
+                    if (size == 0)
                     {
-                        int i1 = tag.indexOf("width=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
-                        auto val = tag.substring(i1, i2).replace("\"", "").getIntValue();
-                        if (val > 0)
-                        {
-                            auto ratio = (float)h / (float)w;
-                            w = val;
-                            h = w * ratio;
-                        }
+                        String errMsg("[NOT FOUND: " + ImgSrc + "]\n");
+                        textEditor->insertTextAtCaret(errMsg);
+                        charCounter += errMsg.length();
                     }
-
-                    // Set Image size and position 
-                    cmp->setBounds(x, y, w, h);
-
-                    // Now this is tricky! There's no way to get the viewport that contains the text in a TextEditor.
-                    // This method digs into the component until reaching the viewport. 
-                    // Works with Juce 6.1.6 but may break if the class is modified in future versions of Juce.
-                    textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
-
-                    // Now calculate the amount of break lines needed to move the text right below the image using the last caret size
-                    int shiftY = round((float)h / (float)caretH);
-                    for (int i = 0; i < shiftY; i++)
+                    else
                     {
-                        lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+                        auto img = ImageCache::getFromMemory(data, size);
+                        auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
+                        cmp->setImage(img);
+                        int lastFontHeight = textEditor->getFont().getHeight(); 
+                        int w = img.getWidth();
+                        int h = img.getHeight();
+
+                        // Resize image (set width, keep aspect ratio)
+                        if (tag.containsIgnoreCase("width"))
+                        {
+                            int i1 = tag.indexOf("width=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
+                            auto val = tag.substring(i1, i2).replace("\"", "").getIntValue();
+                            if (val > 0)
+                            {
+                                auto ratio = (float)h / (float)w;
+                                w = val;
+                                h = w * ratio;
+                            }
+                        }
+
+                        // Set Image size and position 
+                        int x = textEditor->getLeftIndent();
+                        int y = textEditor->getTextHeight() - lastFontHeight * 2;
+                        cmp->setBounds(x, y, w, h);
+
+                        // Now this is tricky! There's no way to get the viewport that contains the text in a TextEditor.
+                        // This method digs into the component until reaching the viewport. 
+                        // Works with Juce 6.1.6 but may break if the class is modified in future versions of Juce.
+                        textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
+
+                        // Now calculate the amount of break lines needed to move the text right below the image using the last font height
+                        int shiftY = round((float)h / (float)lastFontHeight);
+                        for (int i = 0; i < shiftY; i++)
+                        {
+                            lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+                        }
                     }
                 }
 
@@ -657,6 +693,7 @@ private:
     bool showAnchorPopup = true;
     bool mobileStyle = false;
     int totalTextHeight = 0;
+    bool Comment = false;
     
     bool hoverLink = false;
     String hoverLinkText = String();
