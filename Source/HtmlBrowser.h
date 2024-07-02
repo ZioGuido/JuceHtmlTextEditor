@@ -34,16 +34,35 @@ public:
         htmlView->setBackgroundColor(Colour(0xFF404050));
         addAndMakeVisible(htmlView.get());
         //htmlView->setShowAnchorPopup(false);
+        //htmlView->setMobileStyle(true);
+        //htmlView->useImageIdents = true;
         
-        btnClose.reset(new SquareButton("CLOSE", 1));
-        btnClose->onClickCallback = [&](const MouseEvent&){ Hide(); };
-        addAndMakeVisible(btnClose.get());
+
+
+        btnLoad.reset(new SquareButton("Load HTML", 1));
+        btnLoad->onClickCallback = [&](const MouseEvent&) 
+        {
+            fileChooser.reset(new FileChooser("Load HTML file", File::getCurrentWorkingDirectory(), "*.htm;*.html", true));
+            fileChooser->launchAsync(FileBrowserComponent::openMode | FileBrowserComponent::canSelectFiles,
+                [&](const FileChooser& fc) mutable
+                {
+                    if (fc.getURLResults().size() > 0)
+                    {
+                        history.clear();
+                        auto HTML = fc.getResult().loadFileAsString();
+
+                        htmlView->Reset(true);
+                        htmlView->appendHtml(HTML);
+                        htmlView->getPointerToTextEditorComponent()->moveCaretToTop(false);
+                    }
+                });
+        };
+        addAndMakeVisible(btnLoad.get());
 
         btnBack.reset(new SquareButton("<< BACK", 1));
         btnBack->onClickCallback = [&](const MouseEvent&) { Back(); };
         btnBack->setEnabled(false);
         addAndMakeVisible(btnBack.get());
-
         
         btnSearch.reset(new SquareButton("Search", 1));
         btnSearch->onClickCallback = [&](const MouseEvent&) { DoSearch(); };
@@ -53,6 +72,20 @@ public:
         searchField->setEditable(true, false, false);
         //searchField->onTextChange = [&] { DoSearch(); };
         addAndMakeVisible(searchField.get());
+
+        btnExport.reset(new SquareButton("EXPORT", 1));
+        btnExport->onClickCallback = [&](const MouseEvent&)
+        {
+            fileChooser.reset(new FileChooser(translate("Save to..."), File::getSpecialLocation(File::userDesktopDirectory).getFullPathName(), "*.png", true));
+            fileChooser->launchAsync(FileBrowserComponent::saveMode | FileBrowserComponent::canSelectFiles | FileBrowserComponent::warnAboutOverwriting,
+                [this](const FileChooser& fc) mutable
+                {
+                    if (fc.getURLResults().size() > 0)
+                        htmlView->exportPageToImage(fc.getURLResult());
+                }
+            );
+        };
+        addAndMakeVisible(btnExport.get());
 
         dialog.reset(new GSiDialogWindow());
         addChildComponent(dialog.get());
@@ -108,7 +141,7 @@ public:
 #endif
         if (HTML.isEmpty()) return;
 
-        htmlView->Reset();
+        htmlView->Reset(true);
         htmlView->appendHtml(HTML);
         htmlView->getPointerToTextEditorComponent()->moveCaretToTop(false);
     }
@@ -120,28 +153,31 @@ public:
         htmlView->searchAndHighlight(text);
     }
 
-    void paint (juce::Graphics& g) override
+private:
+    std::unique_ptr<GSiHtmlTextEdit> htmlView;
+    std::unique_ptr<SquareButton> btnLoad, btnBack, btnSearch, btnExport;
+    std::unique_ptr<GSiDialogWindow> dialog;
+    std::unique_ptr<Label> searchField;
+
+    Array<String> history;
+
+    std::unique_ptr<FileChooser> fileChooser;
+
+    void paint(juce::Graphics& g) override
     {
         g.fillAll(Colours::black);
     }
 
     void resized() override
     {
-        htmlView->setBounds(0, 0, getWidth(), getHeight() - 40);
-        btnClose->setBounds(getWidth() - 140, getHeight() - 35, 120, 30);
-        btnBack->setBounds(getWidth() - 270, getHeight() - 35, 120, 30);
-        btnSearch->setBounds(getWidth() - 400, getHeight() - 35, 120, 30);
-        searchField->setBounds(10, getHeight() - 35, btnSearch->getX() - 20, 30);
+        btnLoad->setBounds(0, 0, 100, 30);
+        btnBack->setBounds(110, 0, 100, 30);
+        searchField->setBounds(220, 0, getWidth() - 220 - 230, 30);
+        btnSearch->setBounds(getWidth() - 220, 0, 100, 30);
+        btnExport->setBounds(getWidth() - 110, 0, 100, 30);
+
+        htmlView->setBounds(0, 35, getWidth(), getHeight() - 40);
     }
-
-private:
-    std::unique_ptr<GSiHtmlTextEdit> htmlView;
-    std::unique_ptr<SquareButton> btnClose, btnBack, btnSearch;
-    std::unique_ptr<GSiDialogWindow> dialog;
-    std::unique_ptr<Label> searchField;
-
-    Array<String> history;
-
 
     bool keyPressed(const KeyPress& key, Component* originatingComponent) override
     {

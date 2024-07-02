@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 9 Sep 2023
+    Last Update: 2 Jul 2024
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to 
     easily format text with different sizes, colors, styles, fonts and also 
@@ -59,6 +59,7 @@ public:
         
         textEditor->clear();
         textEditor->setCaretPosition(0);
+        Comment = false;
 
         if (fullReset)
         {
@@ -68,7 +69,7 @@ public:
             fontStyle = Font::FontStyleFlags::plain;
             doSetFont();
             textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
-            textEditor->setColour(TextEditor::ColourIds::backgroundColourId, Colours::black);
+            //textEditor->setColour(TextEditor::ColourIds::backgroundColourId, Colours::black);
         }
     }
 
@@ -135,6 +136,20 @@ public:
         resized();
     }
 
+    void setVerticalScrollBar(bool shouldBeVisible)
+    {
+        if (mobileStyle)
+        {
+            textEditor->setScrollbarsShown(false);
+            mobileStyleViewPort.setScrollBarsShown(shouldBeVisible, false, true, false);
+        }
+        else
+        {
+            textEditor->setScrollbarsShown(shouldBeVisible);
+            mobileStyleViewPort.setScrollBarsShown(false, false, true, false);
+        }
+    }
+
 
     //==============================================================================
 
@@ -152,6 +167,7 @@ public:
         bool renderPreFormatted = false;
         String tag, code, output;
         juce_wchar lastChar = 0;
+        ImagesInThisDocument.clear();
 
         // Replace CRLF with just LF
         String input = HTML.replace("\r\n", "\n");
@@ -159,10 +175,22 @@ public:
         // Parse each single character in the HTML text
         for (auto s : input)
         {
-            if (Comment)
+            // Make sure that content in a pre-formatted paragraph passes unaltered, including HTML code, until the closing tag
+            if (renderPreFormatted)
             {
                 output += String::charToString(s);
-                if (output.endsWith("-->")) { Comment = false; output.clear(); }
+                charCounter++;
+                if (output.endsWithIgnoreCase("</pre>"))
+                {
+                    output = output.replace("</pre>", "", true);
+                    textEditor->setCaretPosition(charCounter);
+                    textEditor->insertTextAtCaret(output);
+                    output.clear();
+
+                    renderPreFormatted = false;
+                    tag = "/pre";
+                    canParseTag = true;
+                }
                 continue;
             }
 
@@ -183,12 +211,14 @@ public:
             {
                 if (s == '>')
                 {
+                    if (Comment) { if (!tag.endsWith("--")) continue; else Comment = false; } // Discard everything within a comment including tags
                     beginTag = false;
                     canParseTag = true;
                 }
-                else 
+                else
                 {
                     tag += s;
+                    if (tag.startsWith("!--")) Comment = true; // Detect comment start
                     continue;
                 }
             }
@@ -243,8 +273,6 @@ public:
             // Parse Tags
             if (canParseTag && tag.isNotEmpty())
             {
-                if (tag.startsWith("!--")) { Comment = true; }
-                
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Break line
                 if (tag.startsWithIgnoreCase("br ") || tag == "br") { lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++; }
@@ -351,17 +379,56 @@ public:
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-                // List Item
+                // Lists
+                else if (tag.startsWithIgnoreCase("ul"))
+                {
+                    lastListIsOrdered = false;
+                    OrderedListCounter = 1;
+                    lastIndentRange.setStart(charCounter + 1);
+                }                
+                else if (tag.startsWithIgnoreCase("ol"))
+                {
+                    lastListIsOrdered = true;
+                    OrderedListCounter = 1;
+                    lastIndentRange.setStart(charCounter + 1);
+                }
                 else if (tag.startsWithIgnoreCase("li"))
                 {
-                    String indent("\n  - ");
-                    textEditor->insertTextAtCaret(indent);
-                    charCounter += indent.length();
+                    if (useImageIdents)
+                    {
+                        textEditor->insertTextAtCaret("\n"); charCounter++;
+                    }
+                    else
+                    {
+                        String indent = (lastListIsOrdered) ? "\n  " + String(OrderedListCounter) + ". " : "\n  - ";
+                        textEditor->insertTextAtCaret(indent);
+                        charCounter += indent.length();
+                    }
+                    OrderedListCounter++;
                 }
                 else if (tag.startsWithIgnoreCase("/ul") || tag.startsWithIgnoreCase("/ol"))
                 {
+                    if (useImageIdents)
+                    {
+                        lastIndentRange.setEnd(charCounter);
+                        textEditor->setBounds(textEditor->getBounds().withHeight(textEditor->getTextHeight()));
+                        auto b = textEditor->getTextBounds(lastIndentRange).getBounds();
+                        auto* cmp = new ImageComponent(); ImageComponents.add(cmp);
+                        cmp->setImage(textEditor->createComponentSnapshot(b));
+                        cmp->setBounds(b.translated(25, 0));
+                        textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
+                        
+                        textEditor->setHighlightedRegion(lastIndentRange); textEditor->cut(); charCounter = lastIndentRange.getStart();
+                        
+                        String listSymbols;
+                        for (int i = 1; i < OrderedListCounter; i++) listSymbols += (lastListIsOrdered) ? String(i) + ".\n" : " -\n";
+                        textEditor->insertTextAtCaret(listSymbols);
+                        charCounter += listSymbols.length();
+                    }
+
                     // Add newline after unordered (or ordered) list
                     lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+                    lastListIsOrdered = false;
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -388,6 +455,13 @@ public:
                 {
                     // Add newline before paragraph
                     lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
+
+                    if (tag.containsIgnoreCase("style"))
+                    {
+                        int i1 = tag.indexOf("style=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
+                        auto styleString = tag.substring(i1, i2).replace("\"", "");
+                        parseInlineStyle(styleString);
+                    }
                 }
                 else if (tag == "/p")
                 {
@@ -406,7 +480,7 @@ public:
                         parseInlineStyle(styleString);
                     }
                 }
-                else if (tag.startsWithIgnoreCase("/span"))
+                else if (tag == "/span")
                 {
                     fontSize = prev_fontSize;
                     fontColor = prev_fontColor;
@@ -420,14 +494,23 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Pre-formatted
-                else if (tag == "pre") 
+                else if (tag.startsWithIgnoreCase("pre")) 
                 { 
                     renderPreFormatted = true;
+
                     fontStyle = Font::FontStyleFlags::plain;
                     prev_fontFace = fontFace;
-                    fontFace = Font::getDefaultMonospacedFontName();
+                    prev_fontSize = fontSize;
                     fontSize = 12;
+                    fontFace = Font::getDefaultMonospacedFontName();
                     doSetFont();
+
+                    if (tag.containsIgnoreCase("style"))
+                    {
+                        int i1 = tag.indexOf("style=") + 6; int i2 = tag.indexOfChar(i1 + 1, '"');
+                        auto styleString = tag.substring(i1, i2).replace("\"", "");
+                        parseInlineStyle(styleString, false);
+                    }
                 }
                 else if (tag == "/pre")
                 {
@@ -435,6 +518,9 @@ public:
                     fontSize = prev_fontSize;
                     fontFace = prev_fontFace;
                     doSetFont();
+
+                    fontColor = prev_fontColor;
+                    textEditor->setColour(TextEditor::ColourIds::textColourId, fontColor);
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -444,16 +530,28 @@ public:
                     int i1 = tag.indexOf("src=") + 5; int i2 = tag.indexOfChar(i1 + 1, '"');
                     auto ImgSrc = tag.substring(i1, i2).replace("\"", "");
 
+                    MemoryBlock imgMemBlock;
+
+                    // Search image in the resources
                     int size(0);
                     auto data = BinaryData::getNamedResource(ImgSrc.replace(".", "_").replace("-", "").toRawUTF8(), size);
+
+                    // If image wasn't in the resource, attempt to load it from disk
                     if (size == 0)
                     {
-                        String errMsg("[NOT FOUND: " + ImgSrc + "]\n");
-                        textEditor->insertTextAtCaret(errMsg);
-                        charCounter += errMsg.length();
+                        auto ImgFile = File(File::getCurrentWorkingDirectory().getFullPathName() + File::getSeparatorString() + ImgSrc);
+                        if (ImgFile.existsAsFile())
+                        {
+                            ImgFile.loadFileAsData(imgMemBlock);
+                            size = imgMemBlock.getSize();
+                            data = (const char*)imgMemBlock.getData();
+                        }
                     }
-                    else
+
+                    if (size > 0)
                     {
+                        ImagesInThisDocument.add(ImgSrc);
+
                         auto img = ImageCache::getFromMemory(data, size);
                         auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
                         cmp->setImage(img);
@@ -491,6 +589,13 @@ public:
                             lastChar = '\n'; textEditor->insertTextAtCaret("\n"); charCounter++;
                         }
                     }
+
+                    else
+                    {
+                        String errMsg("[NOT FOUND: " + ImgSrc + "]\n");
+                        textEditor->insertTextAtCaret(errMsg);
+                        charCounter += errMsg.length();
+                    }
                 }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -498,27 +603,17 @@ public:
                 continue;
             }
 
-            // In pre-formatted mode, every character is rendered as is
-            if (renderPreFormatted)
-            {
-                lastChar = s;
-            }
+            // Skip multiple new lines
+            if (lastChar == '\n' && s == '\n') continue;
 
-            // Normal rendering mode
-            else
-            {
-                // Skip multiple new lines
-                if (lastChar == '\n' && s == '\n') continue;
+            // Don't render white spaces at begin of new line
+            if (lastChar == '\n' && s == ' ') continue;
 
-                // Don't render white spaces at begin of new line
-                if (lastChar == '\n' && s == ' ') continue;
+            // Don't render multiple white spaces
+            if (lastChar == ' ' && s == ' ') continue;
 
-                // Don't render multiple white spaces
-                if (lastChar == ' ' && s == ' ') continue;
-
-                // Replace new line with white space
-                lastChar = (s == '\n') ? ' ' : s;
-            }
+            // Replace new line with white space
+            lastChar = (s == '\n') ? ' ' : s;
 
             // Add the plain characters to the output buffer
             output += String::charToString(lastChar);
@@ -536,7 +631,7 @@ public:
     }
 
     // Pass a string to search for in the current document, or an empty string to clear search results
-    bool searchAndHighlight(const String& keywords)
+    bool searchAndHighlight(const String& keywords, bool restart = true)
     {
         // Reset search
         if (keywords.isEmpty())
@@ -558,7 +653,7 @@ public:
             if (start < 0)
             {
                 lastSearchEndIndex = 0;
-                return GoToNextSearchResult();
+                return restart ? GoToNextSearchResult() : false;
             }
 
             lastSearchEndIndex = start + keywords.length();
@@ -575,9 +670,9 @@ public:
         return false;
     }
 
-    bool GoToNextSearchResult()
+    bool GoToNextSearchResult(bool restart = true)
     {
-        return searchAndHighlight(lastSearchString);
+        return searchAndHighlight(lastSearchString, restart);
     }
 
     int GetScrollY()
@@ -593,6 +688,23 @@ public:
         if (mobileStyle)
             mobileStyleViewPort.setViewPosition(0, y);
         // else ???
+    }
+
+    //==============================================================================
+
+    Image getPageSnapshot()
+    {
+        return textEditor->createComponentSnapshot({ 0, 0, textEditor->getWidth() - mobileStyleViewPort.getScrollBarThickness(), totalTextHeight }, false);
+    }
+
+    // Export a PNG snapshot of the entire rendered page, works best in MobileStyle
+    bool exportPageToImage(const URL& url)
+    {
+        if (!url.isLocalFile()) return false;
+
+        return (url.getLocalFile().deleteFile()) ? 
+            PNGImageFormat().writeImageToStream(getPageSnapshot(), *url.createOutputStream()) 
+            : false;
     }
 
     //==============================================================================
@@ -614,7 +726,7 @@ public:
 
     void resized() override
     {
-        textEditor->setBounds(0, 0, getWidth(), mobileStyle ? totalTextHeight : getHeight());
+        textEditor->setBounds(0, 0, getWidth() - mobileStyleViewPort.getScrollBarThickness(), mobileStyle ? totalTextHeight : getHeight());
 
         if (transparentLayer != nullptr)
         {
@@ -679,6 +791,8 @@ public:
     std::function<void(const String&)> internalLinkFunction;
 
     String lastSearchString;
+    bool useImageIdents = false;
+    StringArray ImagesInThisDocument;
 
 private:
     std::unique_ptr<TextEditor> textEditor;
@@ -694,6 +808,8 @@ private:
     bool mobileStyle = false;
     int totalTextHeight = 0;
     bool Comment = false;
+    int OrderedListCounter = 0;
+    bool lastListIsOrdered = false;
     
     bool hoverLink = false;
     String hoverLinkText = String();
@@ -702,6 +818,7 @@ private:
     int toolTipWidth = 100;
 
     OwnedArray<ImageComponent> ImageComponents;
+    juce::Range<int> lastIndentRange;
 
     struct HyperLink
     {
@@ -716,11 +833,14 @@ private:
     }
 
     // Attempt to parse some basic inline CSS
-    void parseInlineStyle(const String& inlineStyleString)
+    void parseInlineStyle(const String& inlineStyleString, bool remember = true)
     {
-        prev_fontSize = fontSize;
-        prev_fontColor = fontColor;
-        prev_fontFace = fontFace;
+        if (remember)
+        {
+            prev_fontSize = fontSize;
+            prev_fontColor = fontColor;
+            prev_fontFace = fontFace;
+        }
 
         auto styles = StringArray::fromTokens(inlineStyleString, ";", "'");
         for (auto style : styles)

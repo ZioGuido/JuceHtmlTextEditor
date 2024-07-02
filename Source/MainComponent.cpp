@@ -11,7 +11,7 @@ MainComponent::MainComponent()
     browser.reset(new SimpleHtmlBrowser());
     addChildComponent(browser.get());
 
-    setSize(800, 600);
+    setSize(1024, 768);
 
     browser->Show();
 }
