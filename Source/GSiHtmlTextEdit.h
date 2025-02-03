@@ -4,13 +4,13 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 2 Jul 2024
+    Last Update: 18 Jan 2025
 
-    Uses a TextEditor component and attempts to parse some simple HTML4 to 
-    easily format text with different sizes, colors, styles, fonts and also 
-    inserts hyperlinks with cursor change and a floating tooltip when the 
+    Uses a TextEditor component and attempts to parse some simple HTML4 to
+    easily format text with different sizes, colors, styles, fonts and also
+    inserts hyperlinks with cursor change and a floating tooltip when the
     mouse pointer is over the links.
-    Of course this supports only some basic HTML4 tags, no CSS and no JS. 
+    Of course this supports only some basic HTML4 tags, no CSS and no JS.
 
   ==============================================================================
 */
@@ -19,9 +19,16 @@
 
 #include <JuceHeader.h>
 
+#if JUCE_WINDOWS && JUCE_MAJOR_VERSION >= 8 && JUCE8_USE_SOFTWARE_RENDERER // JUCE 8.0.0 or later
+ #define IMAGE_FROM_DATA_SIZE SoftwareImageType().convert(ImageCache::getFromMemory(data, size))
+#else
+ #define IMAGE_FROM_DATA_SIZE ImageCache::getFromMemory(data, size)
+#endif
+
+
 //==============================================================================
 
-class GSiHtmlTextEdit  : public juce::Component
+class GSiHtmlTextEdit : public juce::Component
 {
 public:
     GSiHtmlTextEdit()
@@ -56,7 +63,7 @@ public:
         lastSearchString.clear();
         AllLinks.clear();
         ImageComponents.clear();
-        
+
         textEditor->clear();
         textEditor->setCaretPosition(0);
         Comment = false;
@@ -118,8 +125,8 @@ public:
         * 1) disable the scroll by scroll bar or mouse wheel
         * 2) disable text hightlight
         * Which are two things still not available for the TextEditor component as of Juce 6.0.8.
-        * The trick is to put the entire TextEditor into an external ViewPort and have the 
-        * TextEditor component to cover the entire text height; and in order to disable normal 
+        * The trick is to put the entire TextEditor into an external ViewPort and have the
+        * TextEditor component to cover the entire text height; and in order to disable normal
         * mouse interaction and just have drag scroll, a transparent component will be overlaid.
         */
 
@@ -178,11 +185,23 @@ public:
             // Make sure that content in a pre-formatted paragraph passes unaltered, including HTML code, until the closing tag
             if (renderPreFormatted)
             {
-                output += String::charToString(s);
-                charCounter++;
+                // Make a tab with 4 spaces
+                if (s == '\t')
+                {
+                    output += "   ";
+                    charCounter += 4;
+                }
+                else
+                {
+                    output += String::charToString(s);
+                    charCounter++;
+                }
+
                 if (output.endsWithIgnoreCase("</pre>"))
                 {
                     output = output.replace("</pre>", "", true);
+                    charCounter -= 6;
+
                     textEditor->setCaretPosition(charCounter);
                     textEditor->insertTextAtCaret(output);
                     output.clear();
@@ -194,10 +213,17 @@ public:
                 continue;
             }
 
+            // Skip white spaces at the beginning of the text
+            else
+            {
+                if (s == '\t')
+                    continue;
+            }
+
             // Catch HTML tag opening
             if (s == '<')
             {
-                textEditor->setCaretPosition(charCounter); 
+                textEditor->setCaretPosition(charCounter);
                 textEditor->insertTextAtCaret(output);
                 output.clear();
 
@@ -264,7 +290,7 @@ public:
                 if (code.startsWith("#")) textEditor->insertTextAtCaret(String::charToString(code.substring(1).getIntValue()));
 
                 // A good solution would be to have a hash table with codes and their corresponding UNICODE characters...
-                
+
                 charCounter++;
                 code.clear();
                 continue;
@@ -279,17 +305,17 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Italic
-                else if (tag ==  "i" || tag ==  "em")       { fontStyle |= Font::FontStyleFlags::italic;    doSetFont(); }
-                else if (tag == "/i" || tag == "/em")       { fontStyle ^= Font::FontStyleFlags::italic;    doSetFont(); }
+                else if (tag == "i" || tag == "em") { fontStyle |= Font::FontStyleFlags::italic;    doSetFont(); }
+                else if (tag == "/i" || tag == "/em") { fontStyle ^= Font::FontStyleFlags::italic;    doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Bold
-                else if (tag ==  "b" || tag ==  "strong")   { fontStyle |= Font::FontStyleFlags::bold;      doSetFont(); }
-                else if (tag == "/b" || tag == "/strong")   { fontStyle ^= Font::FontStyleFlags::bold;      doSetFont(); }
+                else if (tag == "b" || tag == "strong") { fontStyle |= Font::FontStyleFlags::bold;      doSetFont(); }
+                else if (tag == "/b" || tag == "/strong") { fontStyle ^= Font::FontStyleFlags::bold;      doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Underlined
-                else if (tag ==  "u") { fontStyle |= Font::FontStyleFlags::underlined;  doSetFont(); }
+                else if (tag == "u") { fontStyle |= Font::FontStyleFlags::underlined;  doSetFont(); }
                 else if (tag == "/u") { fontStyle ^= Font::FontStyleFlags::underlined;  doSetFont(); }
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -307,10 +333,10 @@ public:
                         tmpHL.position.setStart(charCounter);
                     }
                 }
-                else if (tag == "/a") 
-                { 
-                    fontStyle ^= Font::FontStyleFlags::underlined;  
-                    doSetFont(); 
+                else if (tag == "/a")
+                {
+                    fontStyle ^= Font::FontStyleFlags::underlined;
+                    doSetFont();
                     textEditor->setColour(TextEditor::ColourIds::textColourId, prev_fontColor);
 
                     tmpHL.position.setEnd(charCounter);
@@ -385,7 +411,7 @@ public:
                     lastListIsOrdered = false;
                     OrderedListCounter = 1;
                     lastIndentRange.setStart(charCounter + 1);
-                }                
+                }
                 else if (tag.startsWithIgnoreCase("ol"))
                 {
                     lastListIsOrdered = true;
@@ -417,9 +443,9 @@ public:
                         cmp->setImage(textEditor->createComponentSnapshot(b));
                         cmp->setBounds(b.translated(25, 0));
                         textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
-                        
+
                         textEditor->setHighlightedRegion(lastIndentRange); textEditor->cut(); charCounter = lastIndentRange.getStart();
-                        
+
                         String listSymbols;
                         for (int i = 1; i < OrderedListCounter; i++) listSymbols += (lastListIsOrdered) ? String(i) + ".\n" : " -\n";
                         textEditor->insertTextAtCaret(listSymbols);
@@ -494,8 +520,8 @@ public:
 
                 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
                 // Pre-formatted
-                else if (tag.startsWithIgnoreCase("pre")) 
-                { 
+                else if (tag.startsWithIgnoreCase("pre"))
+                {
                     renderPreFormatted = true;
 
                     fontStyle = Font::FontStyleFlags::plain;
@@ -552,10 +578,10 @@ public:
                     {
                         ImagesInThisDocument.add(ImgSrc);
 
-                        auto img = ImageCache::getFromMemory(data, size);
-                        auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc)); 
+                        auto img = IMAGE_FROM_DATA_SIZE; //ImageCache::getFromMemory(data, size);
+                        auto* cmp = ImageComponents.add(new ImageComponent(ImgSrc));
                         cmp->setImage(img);
-                        int lastFontHeight = textEditor->getFont().getHeight(); 
+                        int lastFontHeight = textEditor->getFont().getHeight();
                         int w = img.getWidth();
                         int h = img.getHeight();
 
@@ -572,13 +598,13 @@ public:
                             }
                         }
 
-                        // Set Image size and position 
+                        // Set Image size and position
                         int x = textEditor->getLeftIndent();
                         int y = textEditor->getTextHeight() - lastFontHeight * 2;
                         cmp->setBounds(x, y, w, h);
 
                         // Now this is tricky! There's no way to get the viewport that contains the text in a TextEditor.
-                        // This method digs into the component until reaching the viewport. 
+                        // This method digs into the component until reaching the viewport.
                         // Works with Juce 6.1.6 but may break if the class is modified in future versions of Juce.
                         textEditor->getChildComponent(0)->getChildComponent(0)->getChildComponent(0)->addAndMakeVisible(cmp);
 
@@ -638,17 +664,17 @@ public:
         {
             lastSearchEndIndex = 0;
             lastSearchString.clear();
-            textEditor->setHighlightedRegion({0,0});
+            textEditor->setHighlightedRegion({ 0,0 });
             return false;
         }
-        
+
         lastSearchString = keywords;
         auto plainTextPage = textEditor->getText(); //DBG("plainTextPage = " << plainTextPage);
 
         if (plainTextPage.containsIgnoreCase(keywords))
         {
             auto start = plainTextPage.indexOfIgnoreCase(lastSearchEndIndex, keywords);
-            
+
             // Reached end of results? Start searching from the beginning
             if (start < 0)
             {
@@ -702,8 +728,8 @@ public:
     {
         if (!url.isLocalFile()) return false;
 
-        return (url.getLocalFile().deleteFile()) ? 
-            PNGImageFormat().writeImageToStream(getPageSnapshot(), *url.createOutputStream()) 
+        return (url.getLocalFile().deleteFile()) ?
+            PNGImageFormat().writeImageToStream(getPageSnapshot(), *url.createOutputStream())
             : false;
     }
 
@@ -810,7 +836,7 @@ private:
     bool Comment = false;
     int OrderedListCounter = 0;
     bool lastListIsOrdered = false;
-    
+
     bool hoverLink = false;
     String hoverLinkText = String();
     juce::Point<int> hoverPosition;
@@ -829,7 +855,25 @@ private:
 
     void doSetFont()
     {
-        textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+        //textEditor->setFont(Font(fontFace, fontSize, fontStyle));
+
+        auto theFont = Font(fontFace, fontSize, fontStyle);
+
+        auto fontHeight = fontSize;
+        int ff_size(0);
+        auto ff_data = BinaryData::getNamedResource(fontFace.replace(".", "_").replace("-", "").toRawUTF8(), ff_size);
+        if (ff_size > 0)
+        {
+            theFont = Font(Typeface::createSystemTypefaceFor(ff_data, ff_size));
+            //#if JUCE_MAC || JUCE_IOS
+            //fontHeight *= 0.75f; // Fonts look bigger on iOS and Mac OS!
+            //#endif
+        }
+
+        theFont.setHeight(fontHeight);
+        theFont.setStyleFlags(fontStyle);
+
+        textEditor->setFont(theFont);
     }
 
     // Attempt to parse some basic inline CSS
@@ -846,7 +890,7 @@ private:
         for (auto style : styles)
         {
             auto pair = StringArray::fromTokens(style, ":", "'");
-            if (pair.size() < 2 ) continue;
+            if (pair.size() < 2) continue;
             auto key = pair[0].trim();
             auto val = pair[1].trim();
             //DBG("Key: " << key << " Value: " << val);
@@ -879,5 +923,5 @@ private:
     }
 
     //==============================================================================
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GSiHtmlTextEdit)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(GSiHtmlTextEdit)
 };
