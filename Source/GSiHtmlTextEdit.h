@@ -4,7 +4,7 @@
     GSiHtmlTextEdit.h
     Author:  Guido Scognamiglio - www.GenuineSoundware.com
     Created: 29 Jan 2021 6:32:02pm
-    Last Update: 18 Jan 2025
+    Last Update: 20 Nov 2025
 
     Uses a TextEditor component and attempts to parse some simple HTML4 to
     easily format text with different sizes, colors, styles, fonts and also
@@ -66,6 +66,9 @@ public:
 
         textEditor->clear();
         textEditor->setCaretPosition(0);
+        if (mobileStyle) 
+            textEditor->setBounds(textEditor->getBounds().withHeight(0));
+
         Comment = false;
 
         if (fullReset)
